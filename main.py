@@ -43,6 +43,7 @@ client = instructor.from_provider(
 origins = [
     "http://localhost",
     "http://localhost:3000",
+    "http://localhost:8000",
     "https://prae-vita-frontend.vercel.app",
 ]
 
