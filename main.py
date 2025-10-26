@@ -1,11 +1,9 @@
-import pickle
 import joblib
 import pandas as pd
 from sklearn.pipeline import Pipeline
 from sklearn.compose import ColumnTransformer
 from sklearn.preprocessing import OneHotEncoder, StandardScaler
 from sklearn.impute import SimpleImputer
-from xgboost import XGBClassifier
 
 
 
