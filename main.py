@@ -69,7 +69,7 @@ from schema import (
     Location, ReportOutput, PredictionData
 )
 
-MODEL_PATH = 'model/cholera_xgb_pipeline.pkl'
+MODEL_PATH = 'model/cholera_gb_pipeline.joblib'
 model = None
 
 try:
