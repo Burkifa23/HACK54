@@ -42,7 +42,7 @@ client = instructor.from_provider(
 # Add CORS Middleware
 origins = [
     "http://localhost",
-    "http://localhost:8000",
+    "http://localhost:3000",
     "https://prae-vita-frontend.vercel.app",
 ]
 
