@@ -226,6 +226,15 @@ def predict_disease_outbreak(input_data: PredictionInput):
     return {"prediction": [int(prediction[0][0]), int(prediction[0][1])]}
 
 
+# ... all your imports and app setup ...
+# Make sure 'os' and 'pandas' are imported at the top
+import os 
+import pandas as pd
+
+# ... all your other code ...
+# ... model loading, background tasks, other endpoints ...
+
+
 @app.post("/generate-comprehensive-report", response_model=ReportOutput)
 async def create_comprehensive_report(
     db: Session = Depends(get_db)
@@ -233,18 +242,65 @@ async def create_comprehensive_report(
     """
     This endpoint fetches ALL processed data from the entire database,
     and returns a full, AI-generated comprehensive summary.
+    
+    If the database is COMPLETELY empty, it will attempt to load, process,
+    and report on a default 'test.csv' file.
     """
     
-    # --- Step 1: Fetch all processed data and the date range ---
+    # Define the path to your default file
+    DEFAULT_CSV_PATH = "test.csv" 
+    
+    # --- NEW: Check if DB is completely empty ---
+    try:
+        total_rows = db.query(models.PredictionData).count()
+        
+        if total_rows == 0:
+            print("Database is empty. Attempting to load default 'test.csv'...")
+            
+            if not os.path.exists(DEFAULT_CSV_PATH):
+                print(f"Default file '{DEFAULT_CSV_PATH}' not found.")
+                raise HTTPException(
+                    status_code=404, 
+                    detail="Database is empty and default 'test.csv' is missing."
+                )
+            
+            # 1. Load CSV from disk
+            df = pd.read_csv(DEFAULT_CSV_PATH)
+            
+            # 2. Insert data into the database
+            rows_added = crud.bulk_insert_data_from_dataframe(db=db, df=df)
+            print(f"Inserted {rows_added} rows from default CSV.")
+
+            # 3. Process data SYNCHRONOUSLY (not in background)
+            # We call this directly so the report has data to work with *now*.
+            print("Processing default data...")
+            process_pending_predictions() 
+            print("Default data processing complete.")
+
+    except Exception as e:
+        # Catch errors from file loading or processing
+        print(f"Error during default data loading: {e}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Failed to load or process default data: {str(e)}"
+        )
+    # --- END OF NEW LOGIC ---
+
+    # --- Step 1: Fetch all processed data (Original Logic) ---
+    # This part now runs *after* the empty-DB check.
     processed_data, date_range = crud.get_all_processed_data_with_range(db=db)
     
     if not processed_data:
+        # This will now catch:
+        # 1. DB had data, but none was processed.
+        # 2. DB was empty, default data was loaded, but processing failed.
         raise HTTPException(
             status_code=404, 
             detail="No processed prediction data found in the database."
         )
 
     # --- Step 2: Prepare prompt variables ---
+    # (The rest of your function remains exactly the same)
     now_utc = datetime.now(timezone.utc)
     
     # Create a dynamic reporting_period string
@@ -311,7 +367,7 @@ async def create_comprehensive_report(
             f"Key Factors:\n"
             f"  - Rainfall: {row.Rainfall_mm} mm\n"
             f"  - Sanitation Index (0-1): {row.Sanitation_Index}\n"
-      f"  - Water Quality Index (0-1): {row.Water_Quality_Index}\n"
+            f"  - Water Quality Index (0-1): {row.Water_Quality_Index}\n"
             f"  - Population Density: {row.Population_Density} per km²\n"
             f"  - Waste Management Score (0-1): {row.Waste_Management_Score}\n"
         )
